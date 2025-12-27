@@ -24,6 +24,12 @@ class PlaneShooter:
         self.PURPLE = (200, 50, 255)
         self.CYAN = (50, 255, 255)
 
+        # 按钮颜色
+        self.BUTTON_GREEN_NORMAL = (50, 150, 50)
+        self.BUTTON_GREEN_HOVER = (70, 170, 70)
+        self.BUTTON_RED_NORMAL = (150, 50, 50)
+        self.BUTTON_RED_HOVER = (170, 70, 70)
+
         # 游戏状态
         self.score = 0
         self.level = 1
@@ -31,6 +37,10 @@ class PlaneShooter:
         self.game_over = False
         self.font = pygame.font.SysFont(None, 36)
         self.big_font = pygame.font.SysFont(None, 72)
+
+        # 按钮悬停状态
+        self.restart_button_hover = False
+        self.exit_button_hover = False
 
         # 玩家设置
         self.player_width = 60
@@ -387,35 +397,118 @@ class PlaneShooter:
             ])
 
         # 绘制控制提示
-        controls_text = self.font.render('Arrow Keys Move, Space Shoot, ESC Exit, R Restart', True, self.WHITE)
+        controls_text = self.font.render('Arrow Keys Move, Space Shoot, ESC Exit', True, self.WHITE)
         self.screen.blit(controls_text,
                          (self.SCREEN_WIDTH // 2 - controls_text.get_width() // 2,
                           self.SCREEN_HEIGHT - 30))
 
+    def draw_button(self, rect, text, normal_color, hover_color, is_hovering, font_size=28):
+        """绘制按钮的通用函数"""
+        # 选择按钮颜色
+        button_color = hover_color if is_hovering else normal_color
+
+        # 绘制按钮背景
+        pygame.draw.rect(self.screen, button_color, rect, border_radius=8)
+        pygame.draw.rect(self.screen, (220, 220, 220), rect, 2, border_radius=8)
+
+        # 绘制按钮文字
+        button_font = pygame.font.SysFont(None, font_size)
+        button_text = button_font.render(text, True, (255, 255, 255))
+        self.screen.blit(button_text,
+                         (rect.centerx - button_text.get_width() // 2,
+                          rect.centery - button_text.get_height() // 2))
+
+        return rect
+
     def draw_game_over(self):
-        """绘制游戏结束画面"""
+        """绘制游戏结束画面 - 左侧文字，右侧按钮"""
         # 半透明覆盖层
         overlay = pygame.Surface((self.SCREEN_WIDTH, self.SCREEN_HEIGHT), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 180))
         self.screen.blit(overlay, (0, 0))
 
+        # 在中间绘制一条垂直分割线
+        divider_x = self.SCREEN_WIDTH // 2
+        pygame.draw.line(self.screen, (100, 100, 100, 150),
+                         (divider_x, 150),
+                         (divider_x, self.SCREEN_HEIGHT - 150), 2)
+
+        # 左侧区域：游戏信息
+        left_area_width = self.SCREEN_WIDTH // 2
+        left_center_x = left_area_width // 2
+
         # 游戏结束文字
         game_over_text = self.big_font.render('Game Over', True, self.RED)
         self.screen.blit(game_over_text,
-                         (self.SCREEN_WIDTH // 2 - game_over_text.get_width() // 2,
-                          self.SCREEN_HEIGHT // 2 - 80))
+                         (left_center_x - game_over_text.get_width() // 2,
+                          self.SCREEN_HEIGHT // 2 - 120))
 
         # 最终分数
         score_text = self.font.render(f'Final Score: {self.score}', True, self.WHITE)
         self.screen.blit(score_text,
-                         (self.SCREEN_WIDTH // 2 - score_text.get_width() // 2,
+                         (left_center_x - score_text.get_width() // 2,
+                          self.SCREEN_HEIGHT // 2 - 40))
+
+        # 最终等级
+        level_text = self.font.render(f'Final Level: {self.level}', True, self.YELLOW)
+        self.screen.blit(level_text,
+                         (left_center_x - level_text.get_width() // 2,
                           self.SCREEN_HEIGHT // 2))
 
-        # 重新开始提示
-        restart_text = self.font.render('Press R to Restart, ESC to Return to Launcher', True, self.YELLOW)
-        self.screen.blit(restart_text,
-                         (self.SCREEN_WIDTH // 2 - restart_text.get_width() // 2,
-                          self.SCREEN_HEIGHT // 2 + 60))
+        # 右侧区域：按钮
+        right_area_width = self.SCREEN_WIDTH // 2
+        right_area_start_x = divider_x
+        right_center_x = right_area_start_x + right_area_width // 2
+
+        # 按钮布局
+        button_width = 220
+        button_height = 50
+        button_margin = 30
+
+        # 计算第一个按钮的y坐标，使其垂直居中于右侧区域
+        right_area_height = self.SCREEN_HEIGHT - 300  # 留出上下边距
+        total_buttons_height = button_height * 2 + button_margin
+        first_button_y = 150 + (right_area_height - total_buttons_height) // 2
+
+        # 重新开始按钮
+        restart_button_rect = pygame.Rect(
+            right_center_x - button_width // 2,
+            first_button_y,
+            button_width,
+            button_height
+        )
+        self.restart_button_rect = self.draw_button(
+            restart_button_rect,
+            "PLAY AGAIN",
+            self.BUTTON_GREEN_NORMAL,
+            self.BUTTON_GREEN_HOVER,
+            self.restart_button_hover,
+            font_size=30
+        )
+
+        # 退出按钮
+        exit_button_rect = pygame.Rect(
+            right_center_x - button_width // 2,
+            first_button_y + button_height + button_margin,
+            button_width,
+            button_height
+        )
+        self.exit_button_rect = self.draw_button(
+            exit_button_rect,
+            "EXIT TO LAUNCHER",
+            self.BUTTON_RED_NORMAL,
+            self.BUTTON_RED_HOVER,
+            self.exit_button_hover,
+            font_size=26
+        )
+
+        # 键盘提示（小字提示，放在底部）
+        hint_font = pygame.font.SysFont(None, 20)
+        hint_text = "(You can also press R to restart or ESC to exit)"
+        hint_surface = hint_font.render(hint_text, True, (150, 150, 150))
+        self.screen.blit(hint_surface,
+                         (self.SCREEN_WIDTH // 2 - hint_surface.get_width() // 2,
+                          self.SCREEN_HEIGHT - 30))
 
     def reset_game(self):
         """重置游戏状态"""
@@ -432,29 +525,43 @@ class PlaneShooter:
         self.enemy_spawn_delay = 1000
         self.last_enemy_spawn = pygame.time.get_ticks()
         self.last_shot_time = 0
+        # 重置按钮悬停状态
+        self.restart_button_hover = False
+        self.exit_button_hover = False
 
     def run(self):
         """运行游戏主循环"""
         running = True
 
         while running:
-            # 处理事件 - 修复后的逻辑
+            mouse_pos = pygame.mouse.get_pos()
+
+            # 处理事件
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
                         running = False
-                    elif event.key == pygame.K_r:
-                        if self.game_over:
-                            self.reset_game()
-                            # 重置后立即跳出当前帧的事件处理，避免逻辑冲突
-                            break  # 添加这一行
+                    elif event.key == pygame.K_r and self.game_over:
+                        self.reset_game()
                     elif event.key == pygame.K_SPACE and not self.game_over:
                         self.create_bullet()
-
-            # 如果游戏结束后按R键重置了，需要继续处理其他事件
-            # 但不要在同一帧内更新游戏状态，直接进入下一帧
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    if self.game_over:
+                        # 检查是否点击了重新开始按钮
+                        if hasattr(self, 'restart_button_rect') and self.restart_button_rect.collidepoint(mouse_pos):
+                            self.reset_game()
+                        # 检查是否点击了退出按钮
+                        elif hasattr(self, 'exit_button_rect') and self.exit_button_rect.collidepoint(mouse_pos):
+                            running = False
+                elif event.type == pygame.MOUSEMOTION:
+                    # 更新按钮悬停状态
+                    if self.game_over:
+                        if hasattr(self, 'restart_button_rect'):
+                            self.restart_button_hover = self.restart_button_rect.collidepoint(mouse_pos)
+                        if hasattr(self, 'exit_button_rect'):
+                            self.exit_button_hover = self.exit_button_rect.collidepoint(mouse_pos)
 
             # 获取按键状态（持续移动）
             keys = pygame.key.get_pressed()
